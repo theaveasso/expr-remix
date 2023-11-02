@@ -36,3 +36,23 @@ Make sure to deploy the output of `remix build`
 
 - `build/`
 - `public/build/`
+
+### Deploy with Fly.io
+
+1. generate tmol
+
+```bash
+fly launch
+```
+
+2. deploy
+
+```bash
+fly deploy
+```
+
+3. Persist volume
+
+```bash
+fly vol create data --size=1
+```

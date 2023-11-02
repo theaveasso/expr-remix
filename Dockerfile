@@ -36,7 +36,7 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV="production"
-ENV DATABASE_URL="file:/app/data/sqlite.db"
+ENV DATABASE_URL="file:/data/sqlite.db"
 ENV PORT="3000"
 
 COPY --from=prod-deps /app/package.json ./
