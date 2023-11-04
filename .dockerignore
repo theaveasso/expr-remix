@@ -1,8 +1,7 @@
-node_modules
+/node_modules
+*.log
+.DS_Store
 .env
-.dockerignore
-.git
+/.cache
+/public/build
 /build
-prisma/sqlite.db
-prisma/sqlite.db-journal
-Dockerfile
