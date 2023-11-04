@@ -1,50 +1,61 @@
-FROM node:18-bullseye-slim AS base
+# base node image
+FROM node:18-bullseye-slim as base
 
-# install openssl and sqlite3 for prisma
+# set for base and all layer that inherit from it
+ENV NODE_ENV production
+
+# Install openssl for Prisma
 RUN apt-get update && apt-get install -y openssl sqlite3
 
-# Dev deps stage
-FROM base AS deps
-WORKDIR /app
+# Install all node_modules, including dev dependencies
+FROM base as deps
 
-COPY package.json package-lock.json ./
-RUN npm ci
+WORKDIR /myapp
 
-## Prod deps stage
-FROM deps AS prod-deps
-WORKDIR /app
+ADD package.json package-lock.json .npmrc ./
+RUN npm install --include=dev
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json ./
+# Setup production node_modules
+FROM base as production-deps
 
+WORKDIR /myapp
+
+COPY --from=deps /myapp/node_modules /myapp/node_modules
+ADD package.json package-lock.json .npmrc ./
 RUN npm prune --omit=dev
 
-## Builder stage
-FROM deps AS builder
-WORKDIR /app
+# Build the app
+FROM base as build
 
-COPY prisma ./prisma
+WORKDIR /myapp
+
+COPY --from=deps /myapp/node_modules /myapp/node_modules
+
+ADD prisma .
 RUN npx prisma generate
 
-COPY . .
-COPY --from=deps /app/node_modules ./node_modules
-
+ADD . .
 RUN npm run build
 
-## Runner stage
-FROM base AS runner
-WORKDIR /app
+# Finally, build the production image with minimal footprint
+FROM base
 
+ENV DATABASE_URL=file:/data/sqlite.db
+ENV PORT="8080"
 ENV NODE_ENV="production"
-ENV DATABASE_URL="file:/data/sqlite.db"
-ENV PORT="3000"
 
-COPY --from=prod-deps /app/package.json ./
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/public ./public
+# add shortcut for connecting to database CLI
+RUN echo "#!/bin/sh\nset -x\nsqlite3 \$DATABASE_URL" > /usr/local/bin/database-cli && chmod +x /usr/local/bin/database-cli
 
-ENTRYPOINT ["node", "node_modules/.bin/remix-serve", "build/index.js"]
+WORKDIR /myapp
 
+COPY --from=production-deps /myapp/node_modules /myapp/node_modules
+COPY --from=build /myapp/node_modules/.prisma /myapp/node_modules/.prisma
 
+COPY --from=build /myapp/build /myapp/build
+COPY --from=build /myapp/public /myapp/public
+COPY --from=build /myapp/package.json /myapp/package.json
+COPY --from=build /myapp/start.sh /myapp/start.sh
+COPY --from=build /myapp/prisma /myapp/prisma
 
+ENTRYPOINT [ "./start.sh" ]

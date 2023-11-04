@@ -1,9 +1,10 @@
 node_modules
 
-/.cache
 /build
 /public/build
 .env
 
-prisma/sqlite.db
-prisma/sqlite.db-journal
+/cypress/screenshots
+/cypress/videos
+/prisma/data.db
+/prisma/data.db-journal
